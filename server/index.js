@@ -1,4 +1,6 @@
 
+var https = require('https')
+const fs = require('fs')
 require('babel-polyfill');
 const cluster = require('cluster');
 
@@ -44,7 +46,10 @@ else {
   // Setup the routes.
   router(app);
   // Start the server.
-  app.listen(config.api.port, () => {
+https.createServer({
+  key: fs.readFileSync('/etc/letsencrypt/live/audaxexplorer.audaxproject.io/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/audaxexplorer.audaxproject.io/fullchain.pem')
+}, app).listen(config.api.port, () => {
     console.log(`BlocEx running on port ${ config.api.port }`);
   });
 
