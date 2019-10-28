@@ -11,8 +11,8 @@ const secretsConfig = {
   },
   rpc: {
     host: '127.0.0.1',
-    port: '52541',
-    user: 'bulwarkrpc',
+    port: '18201',
+    user: 'audaxrpc',
     pass: 'someverysafepassword',
     timeout: 8000, // 8 seconds
   },
