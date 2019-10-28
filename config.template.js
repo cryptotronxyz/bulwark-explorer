@@ -5,21 +5,21 @@ const { SocialType } = require('./features/social/data');
  */
 const config = {
   api: {
-    host: 'https://explorer.bulwarkcrypto.com',
+    host: 'https://audaxexplorer.audaxproject.io',
     port: '3000',
-    portWorker: '443',
+    portWorker: '3000',
     prefix: '/api',
     timeout: '5s'
   },
   coinDetails: {
-    name: 'Bulwark',
-    shortName: 'BWK',
-    displayDecimals: 2,
-    longName: 'Bulwark Cryptocurrency',
+    name: 'Audax',
+    shortName: 'AUDAX',
+    displayDecimals: 8,
+    longName: 'Audax Digital Currency',
     coinNumberFormat: '0,0.0000',
     coinTooltipNumberFormat: '0,0.0000000000', // Hovering over a number will show a larger percision tooltip
-    websiteUrl: 'https://bulwarkcrypto.com/',
-    masternodeCollateral: 5000, // MN ROI% gets based on this number. If your coin has multi-tiered masternodes then set this to lowest tier (ROI% will simply be higher for bigger tiers)
+    websiteUrl: 'https://audaxproject.io/',
+    masternodeCollateral: 150000, // MN ROI% gets based on this number. If your coin has multi-tiered masternodes then set this to lowest tier (ROI% will simply be higher for bigger tiers)
   },
   offChainSignOn: {
     enabled: true,
@@ -29,7 +29,7 @@ const config = {
   // Add any important block counting down in this array
   blockCountdowns: [
     {
-      block: 602880, // What block are we counting down to?
+      block: 216000, // What block are we counting down to?
       beforeTitle: 'Next Superblock', // What do we show before the block number is hit?
       afterTitle: 'Superblock Active For' // What do we show after the block number is hit?
     }
