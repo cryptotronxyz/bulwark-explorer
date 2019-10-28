@@ -25,8 +25,7 @@ server {
 
     root /var/www/html;
     index index.html index.htm index.nginx-debian.html;
-    #server_name explorer.bulwarkcrypto.com;
-    server_name _;
+    server_name audaxexplorer.audaxproject.io;
 
     gzip on;
     gzip_static on;
@@ -41,33 +40,15 @@ server {
     gzip_types text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript application/vnd.ms-fontobject application/x-font-ttf font/opentype image/svg+xml image/x-icon;
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:8081;
             proxy_http_version 1.1;
             proxy_set_header Upgrade \$http_upgrade;
             proxy_set_header Connection 'upgrade';
             proxy_set_header Host \$host;
             proxy_cache_bypass \$http_upgrade;
-    }
-
-    #listen [::]:443 ssl ipv6only=on; # managed by Certbot
-    #listen 443 ssl; # managed by Certbot
-    #ssl_certificate /etc/letsencrypt/live/explorer.bulwarkcrypto.com/fullchain.pem; # managed by Certbot
-    #ssl_certificate_key /etc/letsencrypt/live/explorer.bulwarkcrypto.com/privkey.pem; # managed by Certbot
-    #include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-    #ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+    }    
 }
 
-#server {
-#    if ($host = explorer.bulwarkcrypto.com) {
-#        return 301 https://\$host\$request_uri;
-#    } # managed by Certbot
-#
-#	listen 80 default_server;
-#	listen [::]:80 default_server;
-#
-#	server_name explorer.bulwarkcrypto.com;
-#   return 404; # managed by Certbot
-#}
 EOL
     sudo systemctl start nginx
     sudo systemctl enable nginx
@@ -83,51 +64,13 @@ installMongo () {
     sudo chown -R mongodb:mongodb /data/db
     sudo systemctl start mongod
     sudo systemctl enable mongod
-    mongo blockex --eval "db.createUser( { user: \"$rpcuser\", pwd: \"$rpcpassword\", roles: [ \"readWrite\" ] } )"
-    clear
-}
-
-installBulwark () {
-    echo "Installing Bulwark..."
-    mkdir -p /tmp/bulwark
-    cd /tmp/bulwark
-    curl -Lo bulwark.tar.gz $bwklink
-    tar -xzf bulwark.tar.gz
-    sudo mv * /usr/local/bin
-    cd
-    rm -rf /tmp/bulwark
-    mkdir -p /home/explorer/.bulwark
-    cat > sudo /home/explorer/.bulwark/bulwark.conf << EOL
-rpcport=52544
-rpcuser=$rpcuser
-rpcpassword=$rpcpassword
-daemon=1
-txindex=1
-EOL
-    sudo cat > sudo /etc/systemd/system/bulwarkd.service << EOL
-[Unit]
-Description=bulwarkd
-After=network.target
-[Service]
-Type=forking
-User=explorer
-WorkingDirectory=/home/explorer
-ExecStart=/usr/local/bin/bulwarkd -datadir=/home/explorer/.bulwark
-ExecStop=/usr/local/bin/bulwark-cli -datadir=/home/explorer/.bulwark stop
-Restart=on-abort
-[Install]
-WantedBy=multi-user.target
-EOL
-    sudo systemctl start bulwarkd
-    sudo systemctl enable bulwarkd
-    echo "Sleeping for 1 hour while node syncs blockchain..."
-    sleep 1h
+    mongo blockex --eval "db.createUser( { user: "blockexuser", pwd: "blockexuserpass", roles: [ "readWrite" ] } )"
     clear
 }
 
 installBlockEx () {
     echo "Installing BlockEx..."
-    git clone https://github.com/bulwark-crypto/bulwark-explorer.git /home/explorer/blockex
+    git clone https://github.com/cryptotronxyz/bulwark-explorer /home/explorer/blockex
     cd /home/explorer/blockex
     yarn install
     cat > /home/explorer/blockex/config.server.js << EOL
@@ -140,13 +83,13 @@ const secretsConfig = {
     port: '27017',
     name: 'blockex',
     user: 'blockexuser',
-    pass: 'Explorer!1'
+    pass: 'blockexuserpass'
   },
   rpc: {
     host: '127.0.0.1',
-    port: '52541',
-    user: 'bulwarkrpc',
-    pass: 'someverysafepassword',
+    port: '18201',
+    user: 'audaxrpc',
+    pass: 'audaxrpcpass',
     timeout: 8000, // 8 seconds
   },
 }
@@ -154,31 +97,62 @@ const secretsConfig = {
 module.exports = { secretsConfig }; // This is returned as an object on purpose so you have to be explicit at stating that you are accessing a secrets config
 EOL
     cat > /home/explorer/blockex/config.js << EOL
+const { SocialType } = require('./features/social/data');
+
 /**
  * Global configuration object.
  */
 const config = {
   api: {
-    host: 'https://explorer.bulwarkcrypto.com',
+    host: 'https://audaxexplorer.audaxproject.io',
     port: '3000',
-    portWorker: '443',
+    portWorker: '3000',
     prefix: '/api',
     timeout: '5s'
   },
   coinDetails: {
-    name: 'Bulwark',
-    shortName: 'BWK',
-    displayDecimals: 2,
-    longName: 'Bulwark Cryptocurrency',
+    name: 'Audax',
+    shortName: 'AUDAX',
+    displayDecimals: 8,
+    longName: 'Audax Digital Currency',
     coinNumberFormat: '0,0.0000',
     coinTooltipNumberFormat: '0,0.0000000000', // Hovering over a number will show a larger percision tooltip
-    websiteUrl: 'https://bulwarkcrypto.com/',
-    masternodeCollateral: 5000 // MN ROI% gets based on this number. If your coin has multi-tiered masternodes then set this to lowest tier (ROI% will simply be higher for bigger tiers)
+    websiteUrl: 'https://audaxproject.io/',
+    masternodeCollateral: 150000, // MN ROI% gets based on this number. If your coin has multi-tiered masternodes then set this to lowest tier (ROI% will simply be higher for bigger tiers)
+  },
+  offChainSignOn: {
+    enabled: true,
+    signMessagePrefix: 'MYCOINSIGN-' // Unique prefix in "Message To Sign" for Off-Chain Sign On
   },
 
-  ///////////////////////////////
-  // API & Social configurations
-  ///////////////////////////////
+  // Add any important block counting down in this array
+  blockCountdowns: [
+    {
+      block: 216000, // What block are we counting down to?
+      beforeTitle: 'Next Superblock', // What do we show before the block number is hit?
+      afterTitle: 'Superblock Active For' // What do we show after the block number is hit?
+    }
+  ],
+
+  /**
+   * API & Social configurations
+   */
+
+  /**
+   * Social integrations are all aggregated into a single table & common format. For example, you can have mulitple reddit integrations with different flairs.
+   */
+  social: [
+    {
+      name: 'developmentUpdates', // Unique name of the social widget
+      type: SocialType.Reddit, // What type of social widget is it?
+      group: 'community', // Multiple social widget feeds can be combined into a single cross-app group feed
+      options: {
+        subreddit: 'MyAwesomeCoin', // BulwarkCoin as an example
+        query: 'flair:"Community"' // Show only posts with Community flair (the little tag next to post) (You can empty this to show all posts or specify your own filter based on https://www.reddit.com/wiki/search)
+      }
+    }
+  ],
+
   freegeoip: {
     api: 'https://extreme-ip-lookup.com/json/' //@todo need to find new geoip service as the limits are too small now (hitting limits) 
   },
@@ -187,14 +161,14 @@ const config = {
     ticker: 'bulwark'
   },
 
-  ///////////////////////////////
-  /// Explorer Customization
-  ///////////////////////////////
+  /**
+   * Explorer Customization
+   */
   desktopMenuExpanded: true,        // If set to true the website will have opened navigation bar on load
 
-  ///////////////////////////////
-  /// Community & Address Related
-  ///////////////////////////////
+  /**
+   * Community & Address Related
+   */
   community: {
     // If you comment out all of these addresses the 'Community Addresses' section will not show up on the homepage. You can add as many addresses to highlight as you wish.
     highlightedAddresses: [
@@ -251,107 +225,93 @@ const config = {
     'FEE': {
       // Adds a new label metadata address
       carverAddressLabelWidget: {
-        label: 'Transaction Fee âŒš',
+        label: 'Transaction Fee ⌚',
         title: 'A small portion of a transaction will be sent to this address. Referred to as "Transaction Fee".'
       }
     },
     'COINBASE': {
       // Adds a new label metadata address
       carverAddressLabelWidget: {
-        label: 'Coinbase (Premine & POW) ðŸ’Ž',
+        label: 'Coinbase (Premine & POW) 💎',
         title: 'This address was active during Proof Of Work (POW) phase to distribute rewards to miners & masternode owners.'
       }
     },
     'MN': {
       // Adds a new label metadata address
       carverAddressLabelWidget: {
-        label: 'Masternode Rewards ðŸ’Ž',
+        label: 'Masternode Rewards 💎',
         title: 'Each block contains a small portion that is awarded to masternode operators that lock 5000 BWK. Masternodes contribute to the network by handling certain coin operations within the network.'
       }
     },
     'POW': {
       // Adds a new label metadata address
       carverAddressLabelWidget: {
-        label: 'Proof Of Work Rewards ðŸ’Ž',
+        label: 'Proof Of Work Rewards 💎',
         title: 'Bulwark started as a Proof Of Work & Masternode coin. Blocks would be mined by powerful computers and be rewarded for keeping up the network.'
       }
     },
     'POS': {
       // Adds a new label metadata address
       carverAddressLabelWidget: {
-        label: 'Proof Of Stake Rewards ðŸ’Ž',
+        label: 'Proof Of Stake Rewards 💎',
         title: 'Inputs that are over 100 BWK can participate in network upkeep. Each block (~90 seconds) one of these inputs is rewarded for keeping up the network.'
       }
     },
   },
 
-  ///////////////////////////////
-  // Adjustable POS Profitability Score - How profitable is your staking, tailored for your blockchain
-  ///////////////////////////////
+  /**
+   * Adjustable POS Profitability Score - How profitable is your staking, tailored for your blockchain
+   */
   profitabilityScore: {
-    /**
-     * Figure out how profitable you are staking. Each output is multiplied by the number below, you can configure it for your blockchain
-     * 
-     * The formula is: (reward.stake.input.confirmations / ((reward.stake.reward / reward.stake.input.value) * 100)) * config.profitabilityScore.weightMultiplier
-     */
-    weightMultiplier: 0.1,
-
-    /**
-     * In order to get the color below (from scoreStyles) we'll use an exponential formula
-     * 
-     * The formula is: profitabilityScore < weightColorScale * Math.pow(2, i + 1) 
-     */
-    weightColorScale: 30,
-
     scoreStyles: [
       // Best case
       {
         color: '#72f87b',
-        title: 'Rank 1/10 - Excellent!!!'
+        title: 'Excellent!!!'
       },
       {
         color: '#84f771',
-        title: 'Rank 2/10 - Excellent!'
+        title: 'Excellent!'
       },
       {
         color: '#a0f771',
-        title: 'Rank 3/10 - Excellent'
+        title: 'Excellent'
       },
       {
         color: '#bcf671',
-        title: 'Rank 4/10 - Very Good'
+        title: 'Very Good'
       },
       {
         color: '#d8f671',
-        title: 'Rank 5/10 - Above Average'
+        title: 'Above Average'
       },
       {
         color: '#f3f671',
-        title: 'Rank 6/10 - Average'
+        title: 'Average'
       },
       {
         color: '#f5dc71',
-        title: 'Rank 7/10 - Below Average'
+        title: 'Below Average'
       },
       {
         color: '#f5c071',
-        title: 'Rank 8/10 - Not Optimal'
+        title: 'Not Optimal'
       },
       {
         color: '#f4a471',
-        title: 'Rank 9/10 - Not Optimal!'
+        title: 'Not Optimal!'
       },
       // Worst case (default)
       {
         color: '#f48871',
-        title: 'Rank 10/10 - Not Optimal!!!'
+        title: 'Not Optimal!!!'
       }
     ]
   },
 
-  ///////////////////////////////
-  /// Cron & Syncing
-  ///////////////////////////////
+  /**
+   * Cron & Syncing
+   */
   blockConfirmations: 10,           // We will re-check block "merkleroot" this many blocks back. If they differ we will then start unwinding carver movements one block at a time until correct block is found. (This is like min confirmations)
   verboseCron: true,                // If set to true there are extra logging details in cron scripts
   verboseCronTx: false,             // If set to true there are extra tx logging details in cron scripts (Not recommended)
